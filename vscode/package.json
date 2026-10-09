@@ -1,0 +1,207 @@
+{
+  "name": "twingauge",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "1.0.0",
+  "publisher": "twingauge",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "twingauge",
+          "title": "TwinGauge",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "twingauge": [
+        {
+          "type": "webview",
+          "id": "twingauge.panel",
+          "name": "%view.name%",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "twingauge.open",
+        "title": "%cmd.open%",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "twingauge.pin",
+        "title": "%cmd.pin%",
+        "icon": "$(pin)"
+      },
+      {
+        "command": "twingauge.unpin",
+        "title": "%cmd.unpin%",
+        "icon": "$(pinned)"
+      },
+      {
+        "command": "twingauge.hide",
+        "title": "%cmd.hide%",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "twingauge.unhide",
+        "title": "%cmd.unhide%",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "twingauge.showHidden",
+        "title": "%cmd.showHidden%",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "twingauge.hideHidden",
+        "title": "%cmd.hideHidden%",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "twingauge.mute",
+        "title": "%cmd.mute%",
+        "icon": "$(bell)"
+      },
+      {
+        "command": "twingauge.unmute",
+        "title": "%cmd.unmute%",
+        "icon": "$(bell-slash)"
+      },
+      {
+        "command": "twingauge.createChannel",
+        "title": "%cmd.createChannel%",
+        "icon": "$(comment-discussion)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "twingauge.mute",
+          "when": "view == twingauge.panel && !twingauge.muted",
+          "group": "navigation"
+        },
+        {
+          "command": "twingauge.unmute",
+          "when": "view == twingauge.panel && twingauge.muted",
+          "group": "navigation"
+        },
+        {
+          "command": "twingauge.showHidden",
+          "when": "view == twingauge.panel && twingauge.hasHidden && !twingauge.showHidden"
+        },
+        {
+          "command": "twingauge.hideHidden",
+          "when": "view == twingauge.panel && twingauge.showHidden"
+        },
+        {
+          "command": "twingauge.createChannel",
+          "when": "view == twingauge.panel"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "twingauge.open",
+          "when": "webviewId == 'twingauge.panel' && webviewSection == 'session'",
+          "group": "1_open@1"
+        },
+        {
+          "command": "twingauge.pin",
+          "when": "webviewId == 'twingauge.panel' && webviewSection == 'session' && !pinned",
+          "group": "2_arrange@1"
+        },
+        {
+          "command": "twingauge.unpin",
+          "when": "webviewId == 'twingauge.panel' && webviewSection == 'session' && pinned",
+          "group": "2_arrange@1"
+        },
+        {
+          "command": "twingauge.hide",
+          "when": "webviewId == 'twingauge.panel' && webviewSection == 'session' && !hidden",
+          "group": "2_arrange@2"
+        },
+        {
+          "command": "twingauge.unhide",
+          "when": "webviewId == 'twingauge.panel' && webviewSection == 'session' && hidden",
+          "group": "2_arrange@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "twingauge.open",
+          "when": "false"
+        },
+        {
+          "command": "twingauge.pin",
+          "when": "false"
+        },
+        {
+          "command": "twingauge.unpin",
+          "when": "false"
+        },
+        {
+          "command": "twingauge.hide",
+          "when": "false"
+        },
+        {
+          "command": "twingauge.unhide",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "TwinGauge",
+      "properties": {
+        "twingauge.channelFolder": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "%config.channelFolder%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "test": "tsc -p ./ && node --test out/test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "~1.90.0",
+    "typescript": "^5.6.0"
+  },
+  "keywords": [
+    "claude",
+    "claude code",
+    "codex",
+    "usage",
+    "limits",
+    "rate limit",
+    "tokens",
+    "agents"
+  ],
+  "icon": "media/logo.png",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%untrusted%",
+      "restrictedConfigurations": [
+        "twingauge.channelFolder"
+      ]
+    },
+    "virtualWorkspaces": true
+  }
+}

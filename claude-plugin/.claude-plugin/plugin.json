@@ -1,0 +1,9 @@
+{
+  "name": "twingauge",
+  "version": "1.0.0",
+  "description": "Writes Claude Code limits, context, cost, agents and permission waits to ~/.claude/twingauge for the TwinGauge VS Code panel.",
+  "author": {
+    "name": "TwinGauge contributors"
+  },
+  "license": "MIT"
+}

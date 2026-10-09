@@ -1,0 +1,17 @@
+{
+  "displayName": "TwinGauge — Claude Code & Codex limits",
+  "description": "Your Claude Code and Codex limits, sessions, agents and token use side by side, with a pace forecast. Local only.",
+  "view.name": "Limits & sessions",
+  "cmd.open": "Open the conversation",
+  "cmd.pin": "Pin",
+  "cmd.unpin": "Unpin",
+  "cmd.hide": "Hide",
+  "cmd.unhide": "Stop hiding",
+  "cmd.showHidden": "TwinGauge: Show hidden sessions",
+  "cmd.hideHidden": "TwinGauge: Hide hidden sessions",
+  "cmd.mute": "TwinGauge: Mute notifications for 1 hour",
+  "cmd.unmute": "TwinGauge: Unmute notifications",
+  "config.channelFolder": "Optional. By default the panel uses `.twingauge/channel` in an open workspace folder (see **TwinGauge: Create agent channel**). Set this to use another folder with `claude/` and `codex/` sub-folders. Relative paths start from the first workspace folder.",
+  "untrusted": "In Restricted Mode the agent channel folder setting is ignored; everything else works, since TwinGauge only reads its own files in your home folder.",
+  "cmd.createChannel": "TwinGauge: Create agent channel in this workspace"
+}

@@ -1,0 +1,138 @@
+/* Colours and fonts come from the VS Code theme; the fallbacks only serve outside VS Code. */
+:root {
+  --green: var(--vscode-charts-green, #3fb27f);
+  --orange: var(--vscode-charts-orange, #d9a441);
+  --red: var(--vscode-charts-red, #e0695a);
+  --blue: var(--vscode-charts-blue, #4daafc);
+  /* Claude: the theme's chart orange. Codex: the theme's chart purple, clearly apart. */
+  --claude: var(--vscode-charts-orange, #d9a441);
+  --codex: var(--vscode-charts-purple, #b180d7);
+  --grey: var(--vscode-descriptionForeground, #8b93a1);
+  --text: var(--vscode-foreground, #cfd3da);
+  --track: color-mix(in srgb, var(--text) 14%, transparent);
+  --mono: var(--vscode-editor-font-family, ui-monospace, Menlo, monospace);
+}
+body {
+  margin: 0;
+  padding: 2px 12px 16px;
+  color: var(--text);
+  font-family: var(--vscode-font-family, -apple-system, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  line-height: 1.4;
+}
+p { margin: 6px 0 }
+.muted { color: var(--grey) }
+.small { font-size: 0.88em }
+.num { font-family: var(--mono); font-size: 0.9em; font-variant-numeric: tabular-nums; white-space: nowrap }
+.tone-green { background: var(--green) }
+.tone-orange { background: var(--orange) }
+.tone-red { background: var(--red) }
+.tone-grey { background: var(--grey) }
+.tone-text-green { color: var(--green) }
+.tone-text-orange { color: var(--orange) }
+.tone-text-red { color: var(--red) }
+.tone-text-blue { color: var(--blue) }
+.tone-text-grey { color: var(--grey) }
+
+/* Line icons: stroke only, the theme colour carried by currentColor. */
+.ico { flex: none; width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round }
+.ico .dot { fill: currentColor; stroke: none }
+.sign { flex: none; width: 12px; height: 12px }
+.sign.claude { fill: var(--claude) }
+.sign.codex { fill: none; stroke: var(--codex); stroke-width: 1.6 }
+.with-sign, .side { display: inline-flex; align-items: center; gap: 5px }
+
+/* Limit rows: sign, name, track, figures. At 300 px nothing overflows. */
+.limit { display: flex; align-items: center; gap: 7px; margin-top: 9px; min-width: 0 }
+.limit .name { flex: none; max-width: 38%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.track { position: relative; flex: 1 1 60px; min-width: 40px; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden }
+.fill { display: block; height: 100%; border-radius: 3px }
+.tick { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text); opacity: 0.7; border-radius: 1px }
+.pace { margin: 2px 0 0 19px }
+
+/* The 5-hour chart. */
+.title { display: flex; align-items: center; gap: 6px; margin-top: 10px }
+.title b { font-weight: 600 }
+.title-end { margin-left: auto }
+.chart svg { display: block; width: 100%; height: 64px; border-radius: 3px; background: var(--track) }
+.chart .elapsed { fill: color-mix(in srgb, var(--text) 7%, transparent) }
+.chart .hundred { stroke: var(--grey); stroke-dasharray: 2 4; opacity: 0.7; vector-effect: non-scaling-stroke }
+.chart .area { fill: color-mix(in srgb, var(--green) 24%, transparent) }
+.chart .line { fill: none; stroke: var(--green); stroke-width: 2; vector-effect: non-scaling-stroke }
+.chart .forecast { stroke: var(--orange); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke }
+.chart .now { stroke: var(--text); stroke-width: 1; opacity: 0.55; vector-effect: non-scaling-stroke }
+.labels, .axis { position: relative; height: 17px; font-size: 10.5px }
+.labels { font-weight: 600 }
+.axis { color: var(--grey); font-family: var(--mono) }
+.labels span, .axis span { position: absolute; top: 2px; white-space: nowrap }
+.middle { transform: translateX(-50%) }
+.end { transform: translateX(-100%) }
+.sentence { font-size: 0.92em }
+.sentence .ico { vertical-align: -2px; margin-right: 5px }
+
+/* Collapsible sections. */
+.block { margin-top: 12px }
+.block > summary { display: flex; align-items: baseline; gap: 8px; cursor: pointer; list-style: none }
+.block > summary::-webkit-details-marker { display: none }
+.block > summary::before { content: '›'; display: inline-block; width: 8px; color: var(--grey); transition: transform 0.15s }
+.block[open] > summary::before { transform: rotate(90deg) }
+.block > summary:focus-visible { outline: 1px solid var(--vscode-focusBorder, var(--orange)); outline-offset: 2px }
+.block > summary .summary { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.section { font-size: 0.8em; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap }
+
+/* Context by category. */
+.ctx { display: flex; height: 10px; border-radius: 3px; overflow: hidden; margin-top: 4px; background: var(--track) }
+.ctx .seg { display: block; height: 100% }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 8px 0 0 }
+.legend .item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap }
+.swatch { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 2px }
+.usage .swatch { margin: 0 4px }
+
+/* Sessions: two lines each, agents underneath. */
+.group { margin: 8px 0 2px; font-size: 0.8em; font-weight: 600; color: var(--grey); text-transform: uppercase }
+.sessions, .agents { list-style: none; margin: 0; padding: 0 }
+.session { display: flex; flex-direction: column; gap: 1px; padding: 3px 4px; border-radius: 3px; min-width: 0; cursor: pointer }
+.session:hover, .session:focus-visible { background: var(--vscode-list-hoverBackground, var(--track)); outline: none }
+.session .l1, .session .l2 { display: flex; align-items: center; gap: 6px; min-width: 0 }
+.session .l1 .name { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.session.codex .l1 .name { color: var(--codex) }
+.session .l2 { padding-left: 20px; font-size: 0.9em }
+.session .l2 .num { flex: none; opacity: 0.85 }
+.session .l2 .num + .desc::before { content: '· ' }
+.session.hidden-row { opacity: 0.6 }
+.pin-mark { width: 11px; height: 11px; color: var(--grey) }
+.agent { display: flex; align-items: center; gap: 6px; padding: 3px 4px; margin: 2px 0 2px 18px; border-radius: 3px; min-width: 0; border-left: 2px solid var(--track); background: color-mix(in srgb, var(--text) 4%, transparent) }
+.agent .name { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.desc { color: var(--grey); font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
+.model { flex: none; font-size: 0.8em; padding: 0 4px; border: 1px solid; border-radius: 3px; white-space: nowrap }
+
+/* Agent channel. */
+.message { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 3px; cursor: pointer; min-width: 0 }
+.message:hover, .message:focus-visible { background: var(--vscode-list-hoverBackground, var(--track)); outline: none }
+.side { flex: none; font-size: 0.85em }
+.side.codex { color: var(--codex) }
+.side.claude { color: var(--claude) }
+.kind { flex: none; font-size: 0.8em; color: var(--grey); text-transform: uppercase }
+.message .num { margin-left: auto; flex: none }
+
+/* Today: one histogram per engine, thin bars aligned left when there are few hours. */
+.histo-title { margin: 12px 0 0; font-size: 0.9em; font-weight: 600; display: flex; justify-content: space-between }
+.hours { display: flex; justify-content: flex-start; align-items: stretch; gap: 3px; height: 90px; margin-top: 10px }
+.h { flex: 1 1 0; max-width: 22px; display: flex; flex-direction: column; min-width: 0 }
+.col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch }
+.b { display: block; width: 100% }
+.hours .b:first-child { border-radius: 2px 2px 0 0 }
+.b.empty { height: 3px; background: var(--track) }
+.lab { margin-top: 3px; text-align: center; font-family: var(--mono); font-size: 9.5px; color: var(--grey) }
+.h:nth-child(even) .lab { visibility: hidden }
+.usage { list-style: none; margin: 8px 0 0; padding: 0 }
+.usage li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0 }
+.ring { display: flex; align-items: center; gap: 12px; margin-top: 10px }
+.ring svg { flex: none; width: 70px; height: 70px }
+.ring > div { flex: 1; min-width: 0 }
+.ring .usage { margin-top: 2px }
+.ring-pc { fill: var(--text); font-size: 13px; font-weight: 700; font-family: var(--vscode-font-family, sans-serif) }
+.foot { margin-top: 12px; font-size: 0.88em }
+
+body.vscode-high-contrast .track, body.vscode-high-contrast .chart svg { outline: 1px solid var(--vscode-contrastBorder, currentColor) }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }

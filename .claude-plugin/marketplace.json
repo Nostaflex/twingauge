@@ -1,0 +1,14 @@
+{
+  "name": "twingauge",
+  "description": "TwinGauge: Claude Code limits, context, cost, agents and permission waits for the TwinGauge VS Code panel",
+  "owner": {
+    "name": "TwinGauge contributors"
+  },
+  "plugins": [
+    {
+      "name": "twingauge",
+      "source": "./claude-plugin",
+      "description": "Writes Claude Code limits, context, cost, agents and permission waits to ~/.claude/twingauge for the TwinGauge VS Code panel"
+    }
+  ]
+}

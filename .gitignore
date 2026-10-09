@@ -1,0 +1,7 @@
+node_modules/
+out/
+*.vsix
+__pycache__/
+*.tmp
+vscode/outils/*.html
+.DS_Store

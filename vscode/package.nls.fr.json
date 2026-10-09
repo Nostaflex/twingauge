@@ -1,0 +1,17 @@
+{
+  "displayName": "TwinGauge — limites de Claude Code et Codex",
+  "description": "Les limites, sessions, agents et jetons de Claude Code et de Codex côte à côte, avec une prévision du rythme. Tout reste local.",
+  "view.name": "Limites et sessions",
+  "cmd.open": "Ouvrir la conversation",
+  "cmd.pin": "Épingler",
+  "cmd.unpin": "Désépingler",
+  "cmd.hide": "Masquer",
+  "cmd.unhide": "Ne plus masquer",
+  "cmd.showHidden": "TwinGauge : afficher les sessions masquées",
+  "cmd.hideHidden": "TwinGauge : cacher les sessions masquées",
+  "cmd.mute": "TwinGauge : sourdine 1 h",
+  "cmd.unmute": "TwinGauge : finir la sourdine",
+  "config.channelFolder": "Facultatif. Par défaut, le panneau utilise `.twingauge/channel` dans un dossier ouvert (voir **TwinGauge : créer le canal des agents**). Règle ce chemin pour utiliser un autre dossier avec des sous-dossiers `claude/` et `codex/`. Un chemin relatif part du premier dossier de l'espace de travail.",
+  "untrusted": "En mode restreint, le réglage du dossier du canal des agents est ignoré ; tout le reste fonctionne, car TwinGauge ne lit que ses propres fichiers dans ton dossier personnel.",
+  "cmd.createChannel": "TwinGauge : créer le canal des agents dans cet espace de travail"
+}
