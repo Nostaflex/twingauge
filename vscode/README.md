@@ -40,7 +40,8 @@ The file format is documented in docs/CONTRACT.md in the repository.
 ## Install
 
 **Requirements:** VS Code 1.90 or later, Claude Code 2.1.289 or later (plugins with hooks), Python 3.9 or
-later for the Codex hook. A Claude Pro or Max plan shows the limits; Codex is optional.
+later for the Codex hook. A Claude Pro or Max plan shows the limits; Codex is optional. Tested on macOS;
+Linux should work the same; Windows is untested.
 
 1. **VS Code extension:** install TwinGauge from the VS Code Marketplace or Open VSX, or build it:
    `cd vscode && npm ci && npx @vscode/vsce package`, then `code --install-extension twingauge-*.vsix`.
@@ -64,6 +65,9 @@ protocol. From then on:
 - at the start of a session and with every prompt, the TwinGauge plugin tells Claude Code about new Codex
   messages, and the TwinGauge hook tells Codex about new Claude Code messages. They get file names only and
   read the files themselves;
+- only channels you created on this machine count (they are listed in `~/.claude/twingauge/channels.json`):
+  a channel committed in a repository you clone is ignored, so nothing in a repository can make your agents
+  read messages you did not ask for;
 - the panel shows what is new for each side and which requests are still unanswered.
 
 Ask one agent, for example: *"Ask Codex in the channel to review the auth module."* Then tell the other one
@@ -80,7 +84,9 @@ grants no permission. The full specification is in docs/CHANNEL.md in the reposi
   question is cut to 80 characters.
 - Credentials are never read or stored by TwinGauge. The plan-limit reading goes through Claude Code's
   credential handle, which TwinGauge never sees. Codex keeps its own credentials.
-- Session files older than seven days are deleted.
+- The VS Code extension never opens a file under `~/.codex`. The Codex hook reads the header and the end of
+  the Codex session file it is told about, to take token counts and the model id, nothing else.
+- Session state files hold your project folder paths, locally. They are deleted after seven days.
 
 ## Notes
 

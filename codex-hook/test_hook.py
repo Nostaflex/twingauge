@@ -1,9 +1,11 @@
 """Tests for the Codex hook: python3 -m unittest discover -s codex-hook -p 'test_*.py' (from the repository root)."""
 import json
 import os
+import shlex
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hook  # noqa: E402
@@ -132,15 +134,26 @@ class Channel(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.home = os.path.join(self.tmp.name, "home")
+        self.registry_file = os.path.join(self.home, ".claude", "twingauge", "channels.json")
         self.proj = os.path.join(self.home, "work", "demo")
         self.ch = os.path.join(self.proj, ".twingauge", "channel")
         for d in ("claude", "codex"):
             os.makedirs(os.path.join(self.ch, d))
         self.sub = os.path.join(self.proj, "src")
         os.makedirs(self.sub)
+        self.register(self.ch)  # a channel counts only when it is registered on the machine
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def registry(self, content):
+        """Write the registry of the machine verbatim (text or bytes)."""
+        os.makedirs(os.path.dirname(self.registry_file), exist_ok=True)
+        with open(self.registry_file, "wb") as h:
+            h.write(content if isinstance(content, bytes) else content.encode("utf-8"))
+
+    def register(self, *paths):
+        self.registry(json.dumps({"v": 1, "channels": list(paths)}))
 
     def put(self, *names):
         for n in names:
@@ -161,9 +174,11 @@ class Channel(unittest.TestCase):
         out = json.loads(hook.channel_output(self.ev(), self.home))
         o = out["hookSpecificOutput"]
         self.assertEqual(o["hookEventName"], "UserPromptSubmit")
-        self.assertIn("2 new messages from Claude Code in .twingauge/channel/claude/", o["additionalContext"])
+        real = os.path.realpath(self.ch)  # the text carries the real path, as the engine reports cwd
+        self.assertIn(f"2 new messages from Claude Code in {real}/claude/", o["additionalContext"])
         self.assertIn(f"{self.A}, {self.B}", o["additionalContext"])
-        self.assertIn("Reply in .twingauge/channel/codex/", o["additionalContext"])
+        self.assertIn(f"Reply in {real}/codex/", o["additionalContext"])
+        self.assertIn(f"Protocol: {real}/README.md.", o["additionalContext"])
         self.assertIn("Never edit Claude Code's files", o["additionalContext"])
         self.assertEqual(self.marker(), {"notifiedUpTo": self.B})
         self.assertIsNone(hook.channel_output(self.ev(), self.home))
@@ -203,6 +218,115 @@ class Channel(unittest.TestCase):
         self.assertIsNone(hook.channel_output(self.ev(transcript_path=sub), self.home))
         self.assertEqual(self.marker()["notifiedUpTo"], "20261008T170011Z-info-m11.md")
 
+    def test_unregistered_channel_is_ignored(self):
+        self.put(self.A)
+        cases = {
+            "other folder": [os.path.join(self.tmp.name, "other", ".twingauge", "channel")],
+            "parent folders only": [self.proj, os.path.join(self.proj, ".twingauge")],
+            "longer name": [self.ch + "-copy"],
+            "empty list": [],
+        }
+        for label, paths in cases.items():
+            with self.subTest(label):
+                self.register(*paths)
+                self.assertIsNone(hook.channel_output(self.ev(), self.home))
+        with self.subTest("no registry file"):
+            os.remove(self.registry_file)
+            self.assertIsNone(hook.channel_output(self.ev(), self.home))
+        self.assertFalse(os.path.exists(os.path.join(self.ch, ".state")))
+
+    def test_registered_path_matches_after_normpath(self):
+        spellings = [
+            self.ch + "/",
+            os.path.join(self.sub, "..", ".twingauge", "channel"),
+            self.proj + "//.twingauge/./channel",
+        ]
+        for i, spelling in enumerate(spellings):
+            with self.subTest(spelling):
+                self.register(42, None, spelling)  # entries that are not strings are skipped
+                self.put(f"20261009T00000{i}Z-info-n{i}.md")
+                out = hook.channel_output(self.ev(), self.home)
+                self.assertIsNotNone(out)
+                self.assertIn(f"n{i}.md", json.loads(out)["hookSpecificOutput"]["additionalContext"])
+
+    def test_unregistered_nearer_channel_does_not_hide_the_registered_one(self):
+        near = os.path.join(self.sub, ".twingauge", "channel")  # for example committed in a cloned sub-folder
+        for d in ("claude", "codex"):
+            os.makedirs(os.path.join(near, d))
+        open(os.path.join(near, "claude", self.B), "w").close()
+        self.put(self.A)
+        text = json.loads(hook.channel_output(self.ev(), self.home))["hookSpecificOutput"]["additionalContext"]
+        self.assertIn(self.A, text)
+        self.assertNotIn(self.B, text)
+        self.assertFalse(os.path.exists(os.path.join(near, ".state")))
+
+    def test_garbage_registry_means_no_channel(self):
+        self.put(self.A)
+        garbage = [
+            "", "{not json", "null", "[]", json.dumps([self.ch]), "{}", '{"v": 1}',
+            json.dumps({"v": 1, "channels": self.ch}),  # a string, not a list
+            json.dumps({"v": 1, "channels": {self.ch: True}}),  # an object (iterating it gives its keys), not a list
+            json.dumps({"v": 1, "channels": [1, None, [self.ch], {"p": self.ch}]}),  # no string entry
+            b"\xff\xfe\x00 not utf-8",
+            "[" * 100_000,  # nested deeper than the parser allows
+        ]
+        for content in garbage:
+            with self.subTest(repr(content[:40])):
+                self.registry(content)
+                self.assertIsNone(hook.channel_output(self.ev(), self.home))
+        with self.subTest("unreadable"):
+            os.remove(self.registry_file)
+            os.makedirs(self.registry_file)  # a folder where the file should be
+            self.assertIsNone(hook.channel_output(self.ev(), self.home))
+        self.assertFalse(os.path.exists(os.path.join(self.ch, ".state")))
+
+    def test_linked_or_non_regular_messages_are_skipped(self):
+        outside = os.path.join(self.tmp.name, "outside.md")
+        open(outside, "w").close()
+        dangling = "20261008T170200Z-info-dangling.md"
+        folder = "20261008T170300Z-info-folder.md"
+        self.put(self.A)
+        os.symlink(outside, os.path.join(self.ch, "claude", self.B))
+        os.symlink(os.path.join(self.tmp.name, "missing.md"), os.path.join(self.ch, "claude", dangling))
+        os.mkdir(os.path.join(self.ch, "claude", folder))
+        text = json.loads(hook.channel_output(self.ev(), self.home))["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("1 new message from", text)
+        self.assertIn(self.A, text)
+        for skipped in (self.B, dangling, folder):
+            self.assertNotIn(skipped, text)
+        self.assertEqual(self.marker(), {"notifiedUpTo": self.A})
+
+    def test_linked_state_folder_disables_the_channel(self):
+        self.put(self.A)
+        elsewhere = os.path.join(self.tmp.name, "elsewhere")
+        os.makedirs(elsewhere)
+        os.symlink(elsewhere, os.path.join(self.ch, ".state"))
+        self.assertIsNone(hook.channel_output(self.ev(), self.home))
+        self.assertEqual(os.listdir(elsewhere), [])  # nothing written through the link
+
+    def test_linked_marker_disables_the_channel(self):
+        self.put(self.A)
+        os.makedirs(os.path.join(self.ch, ".state"))
+        target = os.path.join(self.tmp.name, "target.json")
+        with open(target, "w", encoding="utf-8") as h:
+            h.write('{"notifiedUpTo": ""}')
+        link = os.path.join(self.ch, ".state", "codex.json")
+        os.symlink(target, link)
+        self.assertIsNone(hook.channel_output(self.ev(), self.home))
+        self.assertTrue(os.path.islink(link))  # neither replaced nor written through
+        with open(target, encoding="utf-8") as h:
+            self.assertEqual(h.read(), '{"notifiedUpTo": ""}')
+
+    def test_any_link_in_the_channel_disables_it(self):
+        # Names are not compared: on a case-insensitive disk a link named .STATE would catch the .state write.
+        self.put(self.A)
+        elsewhere = os.path.join(self.tmp.name, "elsewhere")
+        os.makedirs(elsewhere)
+        os.symlink(elsewhere, os.path.join(self.ch, ".STATE"))
+        self.assertIsNone(hook.channel_output(self.ev(), self.home))
+        self.assertEqual(os.listdir(elsewhere), [])
+        self.assertFalse(os.path.exists(os.path.join(self.ch, ".state", "codex.json")))
+
 
 class Installer(unittest.TestCase):
     def test_append_at_end_idempotent_and_remove(self):
@@ -214,6 +338,31 @@ class Installer(unittest.TestCase):
         self.assertEqual(installer.install(conf), [])
         installer.remove(conf)
         self.assertEqual(conf["hooks"], {"Stop": [other]})
+
+    def test_stale_command_is_refreshed_in_place(self):
+        stale = {"hooks": [{"type": "command", "command": "/usr/bin/python3 -I /old path/codex-hook/hook.py", "timeout": 5}]}
+        conf = {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo other"}]}, stale]}}
+        expected = [f"{ev}:0" if ev != "Stop" else "Stop:1 (command updated)" for ev in installer.EVENTS]
+        self.assertEqual(installer.install(conf), expected)
+        self.assertEqual(conf["hooks"]["Stop"][1]["hooks"][0]["command"], installer.COMMAND)  # same position
+
+    def test_command_is_quoted(self):
+        py, path = "/opt/My Python/bin/python3", "/home/me/My Projects/twingauge/codex-hook/hook.py"
+        cmd = installer.command(py, path)
+        self.assertEqual(shlex.split(cmd), [py, "-I", path])
+        conf = {}
+        with mock.patch.object(installer, "COMMAND", cmd):
+            installer.install(conf)
+            entry = conf["hooks"]["Stop"][0]
+            self.assertEqual(shlex.split(entry["hooks"][0]["command"]), [py, "-I", path])
+            self.assertTrue(installer.is_ours(entry))
+            self.assertEqual(installer.install(conf), [])  # idempotent while the command is unchanged
+        installer.remove(conf)
+        self.assertEqual(conf["hooks"], {})
+        # an entry written by the previous version (unquoted) is still recognised
+        self.assertTrue(installer.is_ours({"hooks": [{"command": f"/usr/bin/python3 -I {path}"}]}))
+        # the real command of this clone: the interpreter that runs the installer, then the hook, both intact
+        self.assertEqual(shlex.split(installer.COMMAND), [sys.executable or "python3", "-I", installer.HOOK])
 
 
 if __name__ == "__main__":

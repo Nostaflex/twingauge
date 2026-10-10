@@ -11,6 +11,7 @@ Three producers/consumers share plain JSON files. Nothing else crosses between t
 Rules for every writer:
 - Write atomically: write `<file>.tmp`, then rename over the target.
 - Never write prompt text, command text, file contents, full paths outside `cwd`, tokens or credentials.
+  `cwd` itself (the project folder's absolute path) is written, locally.
   A question text (AskUserQuestion) is cut to 80 characters; an action label carries the tool name and a short
   detail only (file base name, the model's short Bash description).
 - Display wording (labels such as "5-hour window") is NOT written to files: the extension localizes it.

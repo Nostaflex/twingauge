@@ -14,6 +14,7 @@ import {
   buildChannel,
   buildSessions,
   buildView,
+  MESSAGE_NAME,
   readMessageName,
   readPlan,
   readState,
@@ -248,11 +249,26 @@ export function activate(ctx: vscode.ExtensionContext): void {
         if ((vscode.workspace.workspaceFolders?.length ?? 0) === 0) void vscode.window.showWarningMessage(t.channelNoFolder)
         return
       }
-      const created = createChannel(folder.uri.fsPath)
-      void vscode.window.showInformationMessage(created ? t.channelCreated(folder.name) : t.channelExists(folder.name))
+      // Only in a trusted workspace; a channel the repository already ships is registered only on explicit consent.
+      if (!vscode.workspace.isTrusted) {
+        void vscode.window.showWarningMessage(t.channelUntrusted)
+        return
+      }
+      const d = path.join(folder.uri.fsPath, CHANNEL_DIR)
+      if (isChannel(d)) {
+        const n = messageCount(d)
+        const choice = await vscode.window.showWarningMessage(t.channelConfirm(folder.name, n), { modal: true }, t.channelRegister)
+        if (choice !== t.channelRegister) return
+      }
+      const result = createChannel(folder.uri.fsPath)
+      if (result === 'refused') {
+        void vscode.window.showErrorMessage(t.channelRefused(folder.name))
+        return
+      }
+      void vscode.window.showInformationMessage(result === 'created' ? t.channelCreated(folder.name) : t.channelExists(folder.name))
       watchChannel()
       refresh()
-      void vscode.window.showTextDocument(vscode.Uri.file(path.join(folder.uri.fsPath, CHANNEL_DIR, 'README.md')), { preview: true })
+      void vscode.window.showTextDocument(vscode.Uri.file(path.join(d, 'README.md')), { preview: true })
     }),
   )
   const tick = setInterval(refresh, TICK_MS)
@@ -325,9 +341,47 @@ function readAll(threads: readonly CodexThread[]): SessionState[] {
 }
 
 const CHANNEL_DIR = path.join('.twingauge', 'channel')
-const isChannel = (d: string): boolean => fs.existsSync(path.join(d, 'claude')) && fs.existsSync(path.join(d, 'codex'))
+const REGISTRY = path.join(ROOT, 'channels.json')
+/** A real folder, not a link: nothing in a repository may redirect the channel elsewhere. */
+function realDir(p: string): boolean {
+  try {
+    return fs.lstatSync(p).isDirectory()
+  } catch {
+    return false
+  }
+}
+/** `.twingauge/channel` with its two sides, every component a real folder. */
+const isChannel = (d: string): boolean => realDir(path.dirname(d)) && realDir(d) && realDir(path.join(d, 'claude')) && realDir(path.join(d, 'codex'))
 
-/** The agent channel (docs/CHANNEL.md): the setting if given, otherwise `.twingauge/channel` in a workspace folder. */
+/** The channels registered on this machine (docs/CHANNEL.md): the only ones the panel, the plugin and the hook use. */
+function registeredChannels(): string[] {
+  try {
+    const j = JSON.parse(fs.readFileSync(REGISTRY, 'utf8')) as { channels?: unknown }
+    return Array.isArray(j.channels) ? j.channels.filter((x): x is string => typeof x === 'string').map(realPath) : []
+  } catch {
+    return []
+  }
+}
+
+/** Links resolved and the disk's own case, as the engines report a session's working directory (on macOS /tmp is /private/tmp). */
+function realPath(p: string): string {
+  try {
+    return fs.realpathSync.native(p)
+  } catch {
+    return path.normalize(p)
+  }
+}
+
+function registerChannel(d: string): void {
+  const all = registeredChannels()
+  if (!all.includes(realPath(d))) all.push(realPath(d))
+  fs.mkdirSync(ROOT, { recursive: true })
+  const tmp = `${REGISTRY}.${process.pid}.tmp`
+  fs.writeFileSync(tmp, `${JSON.stringify({ v: 1, channels: all }, null, 2)}\n`)
+  fs.renameSync(tmp, REGISTRY)
+}
+
+/** The agent channel: the setting if given (an explicit choice), otherwise a registered `.twingauge/channel` of the workspace. */
 function channelFolder(): string | undefined {
   const setting = vscode.workspace.getConfiguration('twingauge').get<string>('channelFolder', '').trim()
   const folders = (vscode.workspace.workspaceFolders ?? []).map(f => f.uri.fsPath)
@@ -335,12 +389,24 @@ function channelFolder(): string | undefined {
     const d = path.isAbsolute(setting) ? setting : folders[0] === undefined ? undefined : path.join(folders[0], setting)
     return d !== undefined && isChannel(d) ? d : undefined
   }
-  return folders.map(f => path.join(f, CHANNEL_DIR)).find(isChannel)
+  const registered = registeredChannels()
+  return folders.map(f => path.join(f, CHANNEL_DIR)).find(d => registered.includes(realPath(d)) && isChannel(d))
 }
 
-/** Creates the channel and its protocol file; false when the folder already has one. Existing files are kept. */
-function createChannel(root: string): boolean {
+/**
+ * Creates the channel, its protocol file and registers it. Refuses when any component is a link (a repository
+ * could redirect the writes elsewhere). Existing files are kept. Returns 'created', 'existed' or 'refused'.
+ */
+function createChannel(root: string): 'created' | 'existed' | 'refused' {
   const d = path.join(root, CHANNEL_DIR)
+  const parts = [path.dirname(d), d, ...['claude', 'codex', '.state', 'README.md', '.gitignore'].map(n => path.join(d, n))]
+  for (const p of parts) {
+    try {
+      if (fs.lstatSync(p).isSymbolicLink()) return 'refused'
+    } catch {
+      // Absent: created below.
+    }
+  }
   const existed = isChannel(d)
   for (const side of ['claude', 'codex', '.state']) fs.mkdirSync(path.join(d, side), { recursive: true })
   const put = (name: string, text: string): void => {
@@ -349,7 +415,21 @@ function createChannel(root: string): boolean {
   }
   put('README.md', CHANNEL_README)
   put('.gitignore', '.state/\n')
-  return !existed
+  registerChannel(d)
+  return existed ? 'existed' : 'created'
+}
+
+/** Message files already in a channel folder, both sides: what registering it would announce. */
+function messageCount(d: string): number {
+  let n = 0
+  for (const side of ['claude', 'codex']) {
+    try {
+      n += fs.readdirSync(path.join(d, side)).filter(x => MESSAGE_NAME.test(x)).length
+    } catch {
+      // No such side yet.
+    }
+  }
+  return n
 }
 
 /** File names only: the panel never opens a message body itself. */
@@ -359,8 +439,9 @@ function readChannel(): Channel | undefined {
   const msgs: ChannelMessage[] = []
   for (const side of ['claude', 'codex'] as const) {
     try {
-      for (const n of fs.readdirSync(path.join(d, side))) {
-        const m = readMessageName(side, n)
+      // Regular files only: a link planted in a shared repository is never followed.
+      for (const f of fs.readdirSync(path.join(d, side), { withFileTypes: true })) {
+        const m = f.isFile() && !f.isSymbolicLink() ? readMessageName(side, f.name) : undefined
         if (m !== undefined) msgs.push(m)
       }
     } catch {
@@ -373,7 +454,13 @@ function readChannel(): Channel | undefined {
 async function openMessage(id: string): Promise<void> {
   const d = channelFolder()
   const [side, name] = id.split('/')
-  if (d === undefined || (side !== 'claude' && side !== 'codex') || name === undefined || name.includes('..')) return
+  if (d === undefined || (side !== 'claude' && side !== 'codex') || name === undefined || !MESSAGE_NAME.test(name)) return
+  const file = path.join(d, side, name)
+  try {
+    if (!fs.lstatSync(file).isFile()) return
+  } catch {
+    return // gone meanwhile
+  }
   await vscode.window.showTextDocument(vscode.Uri.file(path.join(d, side, name)), { preview: true })
 }
 

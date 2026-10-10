@@ -5,6 +5,19 @@
   "version": "1.0.0",
   "publisher": "twingauge",
   "license": "MIT",
+  "icon": "media/logo.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nostaflex/twingauge"
+  },
+  "homepage": "https://github.com/Nostaflex/twingauge#readme",
+  "bugs": {
+    "url": "https://github.com/Nostaflex/twingauge/issues"
+  },
+  "galleryBanner": {
+    "color": "#17181c",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -12,10 +25,30 @@
     "Visualization",
     "Other"
   ],
+  "keywords": [
+    "claude",
+    "claude code",
+    "codex",
+    "usage",
+    "limits",
+    "rate limit",
+    "tokens",
+    "agents"
+  ],
   "main": "./out/extension.js",
   "activationEvents": [
     "onStartupFinished"
   ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%untrusted%",
+      "restrictedConfigurations": [
+        "twingauge.channelFolder"
+      ]
+    },
+    "virtualWorkspaces": true
+  },
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -169,7 +202,8 @@
         "twingauge.channelFolder": {
           "type": "string",
           "default": "",
-          "markdownDescription": "%config.channelFolder%"
+          "markdownDescription": "%config.channelFolder%",
+          "scope": "machine"
         }
       }
     }
@@ -182,26 +216,5 @@
     "@types/node": "^20.11.0",
     "@types/vscode": "~1.90.0",
     "typescript": "^5.6.0"
-  },
-  "keywords": [
-    "claude",
-    "claude code",
-    "codex",
-    "usage",
-    "limits",
-    "rate limit",
-    "tokens",
-    "agents"
-  ],
-  "icon": "media/logo.png",
-  "capabilities": {
-    "untrustedWorkspaces": {
-      "supported": "limited",
-      "description": "%untrusted%",
-      "restrictedConfigurations": [
-        "twingauge.channelFolder"
-      ]
-    },
-    "virtualWorkspaces": true
   }
 }

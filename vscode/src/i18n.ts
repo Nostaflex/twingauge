@@ -115,6 +115,11 @@ const en = {
   channelCreated: (where: string) => `Agent channel created in ${where}. Claude Code and Codex are told about each other's messages from their next prompt.`,
   channelExists: (where: string) => `${where} already has an agent channel.`,
   channelNoFolder: 'Open a folder first: the channel lives in the project.',
+  channelUntrusted: 'The agent channel is created only in a trusted workspace.',
+  channelConfirm: (where: string, n: number) =>
+    `${where} already contains an agent channel with ${n} message file${n === 1 ? '' : 's'} you did not write here. Registering it means Claude Code and Codex will be told to read them. Register it?`,
+  channelRegister: 'Register',
+  channelRefused: (where: string) => `${where}: the channel folder or one of its files is a symbolic link. Remove it first.`,
   // Webview
   view: {
     context: 'Context',
@@ -258,6 +263,11 @@ const fr: Messages = {
   channelCreated: where => `Canal des agents créé dans ${where}. Claude Code et Codex sont prévenus des messages de l’autre dès leur prochain message.`,
   channelExists: where => `${where} a déjà un canal des agents.`,
   channelNoFolder: 'Ouvre d’abord un dossier : le canal vit dans le projet.',
+  channelUntrusted: 'Le canal des agents ne se crée que dans un espace de travail approuvé.',
+  channelConfirm: (where, n) =>
+    `${where} contient déjà un canal des agents avec ${n} fichier${n === 1 ? '' : 's'} de message que tu n’as pas écrit${n === 1 ? '' : 's'} ici. L’enregistrer, c’est dire à Claude Code et Codex de les lire. L’enregistrer ?`,
+  channelRegister: 'Enregistrer',
+  channelRefused: where => `${where} : le dossier du canal ou un de ses fichiers est un lien symbolique. Retire-le d’abord.`,
   view: {
     context: 'Contexte',
     used: '{0} occupé',

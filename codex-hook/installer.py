@@ -4,10 +4,12 @@
 Always appends at the END of each event list: existing entries keep their position, and Codex trusts
 hooks by position (key "hooks.json:<event>:<index>:0" in config.toml). The file is backed up first.
 Idempotent: an entry that already runs this hook is not added twice. The entry is recognised by its
-command path, which contains codex-hook/hook.py.
+command path, which contains codex-hook/hook.py. The command runs the hook with the interpreter that runs
+this installer, and both paths are shell-quoted (a clone under a folder with a space must keep working).
 """
 import json
 import os
+import shlex
 import shutil
 import sys
 import time
@@ -16,8 +18,15 @@ EVENTS = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Perm
           "SubagentStop", "SessionEnd"]
 WITH_TOOL = {"PreToolUse", "PostToolUse", "PermissionRequest"}
 HOOK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hook.py")
-COMMAND = f"/usr/bin/python3 -I {HOOK}"
 MARKER = "codex-hook/hook.py"
+
+
+def command(interpreter, hook):
+    """Shell command that runs the hook; both paths are quoted so that a space in a folder name does not split them."""
+    return f"{shlex.quote(interpreter)} -I {shlex.quote(hook)}"
+
+
+COMMAND = command(sys.executable or "python3", HOOK)
 
 
 def is_ours(entry):
@@ -29,7 +38,13 @@ def install(conf):
     added = []
     for ev in EVENTS:
         items = hooks.setdefault(ev, [])
-        if any(is_ours(e) for e in items if isinstance(e, dict)):
+        ours = [e for e in items if isinstance(e, dict) and is_ours(e)]
+        if ours:
+            # Already installed: keep its position (Codex trusts hooks by position), refresh a stale command.
+            for h in ours[0].get("hooks", []):
+                if isinstance(h, dict) and MARKER in str(h.get("command", "")) and h.get("command") != COMMAND:
+                    h["command"] = COMMAND
+                    added.append(f"{ev}:{items.index(ours[0])} (command updated)")
             continue
         entry = {"hooks": [{"type": "command", "command": COMMAND, "timeout": 5}]}
         if ev in WITH_TOOL:

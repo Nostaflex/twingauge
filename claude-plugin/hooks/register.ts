@@ -19,7 +19,7 @@ import {
   type SessionState,
   type Plan,
 } from './state'
-import { candidateDirs, newMessages, notificationText, parseMarker, serializeMarker } from './channel'
+import { candidateDirs, newMessages, notificationText, parseMarker, readRegistry, serializeMarker } from './channel'
 
 /** At most one write every 2 s. */
 const WRITE_INTERVAL_MS = 2000
@@ -202,7 +202,7 @@ export const register: Register = on => {
 async function init($: EngineInterface, cwd: string): Promise<void> {
   const id = await $.session.id()
   const root = await $.session.root()
-  const home = (await $.env.get('HOME')) ?? ''
+  const home = await homeDir($)
   sessionPath = `${home}/.claude/twingauge/sessions/${id}.json`
   planPath = `${home}/.claude/twingauge/plan.json`
   const ms = await $.clock.now()
@@ -217,6 +217,11 @@ async function init($: EngineInterface, cwd: string): Promise<void> {
   await refreshUsage($)
   await write($)
   void refreshPlan($)
+}
+
+/** The home folder: HOME, or USERPROFILE when HOME is unset or empty (Windows). */
+async function homeDir($: EngineInterface): Promise<string> {
+  return (await $.env.get('HOME')) || ((await $.env.get('USERPROFILE')) ?? '')
 }
 
 /**
@@ -368,21 +373,31 @@ async function withChannel<R extends { additionalContext?: string[] }>($: Engine
   }
 }
 
-/** Finds the channel, names the new Codex messages and moves the marker; null when nothing is new. */
+/** Finds the registered channel, names the new Codex messages and moves the marker; null when nothing is new. */
 async function channelNotice($: EngineInterface, cwd: string): Promise<string | null> {
-  const home = (await $.env.get('HOME')) ?? ''
+  const home = await homeDir($)
+  // Only a channel registered on this machine counts: a cloned repository can carry one (docs/CHANNEL.md).
+  // The registry holds real paths, like the cwd the engine reports, so a plain string comparison is enough.
+  const registryPath = `${home}/.claude/twingauge/channels.json`
+  if (home === '' || !(await $.fs.exists(registryPath))) return null
+  const registered = readRegistry(await $.fs.read(registryPath))
   for (const dir of candidateDirs(cwd, home)) {
     const channel = `${dir === '/' ? '' : dir}/.twingauge/channel`
+    if (!registered.includes(channel)) continue
     if (!(await $.fs.exists(`${channel}/claude`)) || !(await $.fs.exists(`${channel}/codex`))) continue
+    // Links are never followed: any link in the channel folder or in .state/ disables the channel, before the
+    // marker is read or written. No name is compared: a case-insensitive disk writes .state/ through .STATE.
+    if ((await $.fs.list(channel)).some(f => f.isLink)) return null
+    if ((await $.fs.exists(`${channel}/.state`)) && (await $.fs.list(`${channel}/.state`)).some(f => f.isLink)) return null
     const markerPath = `${channel}/.state/claude.json`
     let marker: string | undefined
     if (await $.fs.exists(markerPath)) marker = String(await $.fs.read(markerPath))
-    const names = (await $.fs.list(`${channel}/codex`)).filter(f => f.kind === 'file').map(f => f.name)
+    const names = (await $.fs.list(`${channel}/codex`)).filter(f => f.kind === 'file' && !f.isLink).map(f => f.name)
     const fresh = newMessages(names, parseMarker(marker))
     if (fresh.length === 0) return null
     // No rename in the API: a single write, which creates .state/ as needed.
     await $.fs.write(markerPath, serializeMarker(fresh[fresh.length - 1] as string))
-    return notificationText(fresh)
+    return notificationText(fresh, channel)
   }
   return null
 }

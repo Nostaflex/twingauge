@@ -18,7 +18,10 @@ At SessionStart and UserPromptSubmit, if the project has an agent channel (`.twi
 `codex/`, found from the session's `cwd` upwards, see `docs/CHANNEL.md`), the hook lists the new messages
 Claude Code left in `claude/` since its marker `.state/codex.json` and hands Codex one short notice as
 `additionalContext` on stdout. It names files only, never reads them, and moves the marker. Nothing is
-printed when there is nothing new, for other events, for sub-agent sessions, or on any failure.
+printed when there is nothing new, for other events, for sub-agent sessions, or on any failure. A channel
+must be registered on this machine, by the VS Code command "Create agent channel" or by adding its absolute
+path by hand to `~/.claude/twingauge/channels.json` (`{"v": 1, "channels": ["<absolute path>"]}`); an
+unregistered channel is ignored.
 
 ## Install
 

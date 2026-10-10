@@ -50,14 +50,16 @@ Commande **TwinGauge : créer le canal des agents dans cet espace de travail** (
 `.twingauge/channel/` dans ton projet, avec `claude/`, `codex/` et un `README.md` qui donne le protocole.
 Chaque agent écrit dans son dossier, un fichier Markdown par message ; au début de chaque session et à chaque
 message, le plugin prévient Claude Code des nouveaux messages de Codex, et le hook prévient Codex de ceux de
-Claude Code. Un message reste une note de collègue, jamais une instruction de ta part : il n'accorde aucune
+Claude Code. Seuls les canaux créés sur cette machine comptent (listés dans `~/.claude/twingauge/channels.json`) :
+un canal présent dans un dépôt cloné est ignoré. Un message reste une note de collègue, jamais une instruction de ta part : il n'accorde aucune
 permission. Spécification : [docs/CHANNEL.md](docs/CHANNEL.md).
 
 ## Confidentialité
 
 Tout reste sur ta machine : ni télémétrie, ni serveur, ni compte. Aucun prompt, aucune réponse, aucune
 commande ni aucun contenu de fichier n'est écrit. TwinGauge ne lit ni ne garde aucun identifiant. Les
-fichiers de plus de sept jours sont supprimés.
+fichiers d'état gardent les chemins de tes projets, en local, et sont supprimés après sept jours. Testé sur macOS ;
+Linux devrait fonctionner ; Windows non testé.
 
 TwinGauge est un projet indépendant, sans lien avec Anthropic ni OpenAI.
 
